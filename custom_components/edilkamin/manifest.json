@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@algra4"],
+  "config_flow": false,
+  "dependencies": [],
+  "documentation": "https://github.com/algra4/home_assistant_edilkamin",
+  "domain": "edilkamin",
+  "iot_class": "calculated",
+  "name": "Edilkamin",
+  "requirements": [],
+  "version": "1.0.0"
+}
