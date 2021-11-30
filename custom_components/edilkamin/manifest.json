@@ -1,11 +1,15 @@
 {
-  "codeowners": ["@algra4"],
-  "config_flow": false,
-  "dependencies": [],
-  "documentation": "https://github.com/algra4/home_assistant_edilkamin",
   "domain": "edilkamin",
-  "iot_class": "calculated",
   "name": "Edilkamin",
+  "config_flow": true,
+  "documentation": "https://github.com/algra4/edilkamin",
   "requirements": [],
-  "version": "1.0.0"
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@algra4"
+  ],
+  "iot_class": "cloud_polling"
 }
