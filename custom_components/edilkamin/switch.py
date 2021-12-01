@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import logging
-
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
+from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 from .edilkminApi import EdilkaminApi
 
 _LOGGER = logging.getLogger(__name__)
@@ -14,11 +15,14 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add sensors for passed config_entry in HA."""
     mac_address = hass.data[DOMAIN][config_entry.entry_id]
+
+    session = async_get_clientsession(hass)
+
     async_add_devices(
         [
-            EdilkaminAirekareSwitch(mac_address),
-            EdilkaminPowerSwitch(mac_address),
-            EdilkaminRelaxSwitch(mac_address),
+            EdilkaminAirekareSwitch(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
+            EdilkaminPowerSwitch(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
+            EdilkaminRelaxSwitch(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
         ]
     )
 
@@ -26,11 +30,11 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
 class EdilkaminAirekareSwitch(SwitchEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, mac_address):
+    def __init__(self, api: EdilkaminAsyncApi):
         """Initialize the sensor."""
         self._state = None
-        self.mac_address = mac_address
-        self.api = EdilkaminApi(mac_address=self.mac_address)
+        self.api = api
+        self.mac_address = api.get_mac_address()
         self._attr_icon = "mdi:air-filter"
 
     @property
@@ -46,30 +50,33 @@ class EdilkaminAirekareSwitch(SwitchEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"{self.mac_address} airekare"
+        return "Mode AireKare"
 
-    def turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
-        self.api.enable_airkare()
+        await self.api.enable_airkare()
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        self.api.disable_airkare()
+        await self.api.disable_airkare()
 
-    def update(self) -> None:
+    async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
-        self._state = self.api.get_airkare_status()
-        _LOGGER.debug("update State airkare= %s", self.state)
+        try:
+            self._state = await self.api.get_airkare_status()
+        except HttpException as err:
+            _LOGGER.error(str(err))
+            return
 
 
 class EdilkaminPowerSwitch(SwitchEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, mac_address):
+    def __init__(self, api: EdilkaminAsyncApi):
         """Initialize the sensor."""
         self._state = None
-        self.mac_address = mac_address
-        self.api = EdilkaminApi(mac_address=self.mac_address)
+        self.api = api
+        self.mac_address = api.get_mac_address()
 
     @property
     def is_on(self):
@@ -84,30 +91,33 @@ class EdilkaminPowerSwitch(SwitchEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"{self.mac_address} power"
+        return "Pellet"
 
-    def turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
-        self.api.enable_power()
+        await self.api.enable_power()
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        self.api.disable_power()
+        await self.api.disable_power()
 
-    def update(self) -> None:
+    async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
-        self._state = self.api.get_power_status()
-        _LOGGER.debug("update State power= %s", self.state)
+        try:
+            self._state = await self.api.get_power_status()
+        except HttpException as err:
+            _LOGGER.error(str(err))
+            return
 
 
 class EdilkaminRelaxSwitch(SwitchEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, mac_address):
+    def __init__(self, api: EdilkaminAsyncApi):
         """Initialize the sensor."""
         self._state = None
-        self.mac_address = mac_address
-        self.api = EdilkaminApi(mac_address=self.mac_address)
+        self.api = api
+        self.mac_address = api.get_mac_address()
         self._attr_icon = "mdi:weather-night"
 
     @property
@@ -123,16 +133,20 @@ class EdilkaminRelaxSwitch(SwitchEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return f"{self.mac_address} relax"
+        return "Mode relax"
 
-    def turn_on(self, **kwargs) -> None:
+    async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
-        self.api.enable_relax()
+        await self.api.enable_relax()
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        self.api.disable_relax()
+        await self.api.disable_relax()
 
-    def update(self) -> None:
+    async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
-        self._state = self.api.get_relax_status()
+        try:
+            self._state = await self.api.get_relax_status()
+        except HttpException as err:
+            _LOGGER.error(str(err))
+            return

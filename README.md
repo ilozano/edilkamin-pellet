@@ -44,7 +44,7 @@ _Pay attention_ : this integration works because the API of Edilkamin is not sec
 
 ```yaml
 edilkamin:
-  - mac_address: 192.168.1.2 
+  - mac_address: XX:XX:XX:XX:XX:XX
 ```
 
 ## Tested device :
