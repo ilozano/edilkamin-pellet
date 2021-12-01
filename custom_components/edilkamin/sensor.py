@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import logging
 from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import (
@@ -28,8 +29,10 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
     session = async_get_clientsession(hass)
 
     async_add_devices(
-        [EdilkaminTemperatureSensor(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
-         EdilkaminFan1Sensor(EdilkaminAsyncApi(mac_address=mac_address, session=session))]
+        [
+            EdilkaminTemperatureSensor(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
+            EdilkaminFan1Sensor(EdilkaminAsyncApi(mac_address=mac_address, session=session))
+        ]
     )
 
 

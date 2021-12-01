@@ -1,9 +1,9 @@
 """Edilkamin async api."""
-import aiohttp
-import async_timeout
-import asyncio
 import json
 import logging
+import asyncio
+import async_timeout
+import aiohttp
 import requests
 
 _LOGGER = logging.getLogger(__name__)
@@ -149,7 +149,7 @@ class EdilkaminAsyncApi:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         try:
-            async with async_timeout.timeout(15):
+            async with async_timeout.timeout(5):
                 body = {
                     "name": attributes,
                     "value": value,

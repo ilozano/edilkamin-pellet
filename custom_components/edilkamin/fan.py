@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import logging
 import math
+
 from homeassistant.components.fan import SUPPORT_SET_SPEED, FanEntity
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.components.fan import SUPPORT_SET_SPEED, FanEntity
 from homeassistant.util.percentage import (
     int_states_in_range,
     percentage_to_ranged_value,
