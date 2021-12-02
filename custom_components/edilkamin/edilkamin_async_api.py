@@ -111,6 +111,12 @@ class EdilkaminAsyncApi:
         _LOGGER.debug("Check config")
         await self.execute_put_request("check", False)
 
+    async def get_target_temperature(self):
+        """Get the target temperature."""
+        _LOGGER.debug("Get the target temperature")
+        response = await self.execute_get_request()
+        return response.get("nvm").get("user_parameters").get("enviroment_1_temperature")
+
     async def execute_get_request(self):
         """Call the API."""
         data = None

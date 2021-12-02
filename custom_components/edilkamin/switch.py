@@ -7,10 +7,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
 from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
-from .edilkminApi import EdilkaminApi
 
 _LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add sensors for passed config_entry in HA."""

@@ -9,7 +9,7 @@ from .const import DOMAIN, MAC_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[str] = ["sensor", "binary_sensor", "switch", "fan"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor", "switch", "fan", "climate"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
