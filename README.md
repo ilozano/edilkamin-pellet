@@ -9,6 +9,7 @@ This little integration provides :
 - sensor :
   - get the temperature
   - get the speed of fan 1
+  - get nb alarms an dates
 - switch :
   - turn on/off the power  
   - turn on/off the airkare function

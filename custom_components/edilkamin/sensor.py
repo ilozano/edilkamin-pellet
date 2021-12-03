@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import logging
-import logging
+import time
 from datetime import timedelta
+from typing import Any
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import (
     DEVICE_CLASS_POWER,
@@ -19,7 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=15)
 
-
 # https://github.com/home-assistant/example-custom-config/blob/master/custom_components/detailed_hello_world_push/sensor.py
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add sensors for passed config_entry in HA."""
@@ -30,8 +31,15 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
 
     async_add_devices(
         [
-            EdilkaminTemperatureSensor(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
-            EdilkaminFan1Sensor(EdilkaminAsyncApi(mac_address=mac_address, session=session))
+            EdilkaminTemperatureSensor(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
+            EdilkaminFan1Sensor(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
+            EdilkaminAlarmSensor(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
         ]
     )
 
@@ -113,6 +121,67 @@ class EdilkaminFan1Sensor(SensorEntity):
         """Fetch new state data for the sensor."""
         try:
             self._state = await self.api.get_fan_1_speed()
+        except HttpException as err:
+            _LOGGER.error(str(err))
+            return
+
+
+class EdilkaminAlarmSensor(SensorEntity):
+    """Representation of a Sensor."""
+
+    def __init__(self, api: EdilkaminAsyncApi):
+        """Initialize the sensor."""
+        self._state = None
+        self.api = api
+        self.mac_address = api.get_mac_address()
+        self._attr_icon = "mdi:alert"
+        self._attributes: dict[str, Any] = {}
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return DEVICE_CLASS_POWER
+
+    @property
+    def unique_id(self):
+        """Return a unique_id for this entity."""
+        return f"{self.mac_address}_nb_alarms_sensor"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return "Nb alarmes pellet"
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        """Return attributes for the sensor."""
+        return self._attributes
+
+    async def async_update(self) -> None:
+        """Fetch new state data for the sensor."""
+        try:
+            alarms = await self.api.get_alarms()
+
+            errors = {
+                "errors": [],
+            }
+
+            for alarm in alarms:
+                data = {
+                    "type": alarm["type"],
+                    "timestamp": time.strftime(
+                        "%d-%m-%Y %H:%M:%S", time.localtime(alarm["timestamp"])
+                    ),
+                }
+                errors["errors"].append(data)
+
+            self._attributes = errors
+
         except HttpException as err:
             _LOGGER.error(str(err))
             return

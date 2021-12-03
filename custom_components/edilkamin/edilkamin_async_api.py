@@ -4,10 +4,8 @@ import logging
 import asyncio
 import async_timeout
 import aiohttp
-import requests
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class EdilkaminAsyncApi:
     """Edilkamin async API."""
@@ -115,7 +113,28 @@ class EdilkaminAsyncApi:
         """Get the target temperature."""
         _LOGGER.debug("Get the target temperature")
         response = await self.execute_get_request()
-        return response.get("nvm").get("user_parameters").get("enviroment_1_temperature")
+        return (
+            response.get("nvm").get("user_parameters").get("enviroment_1_temperature")
+        )
+
+    async def get_alarms(self):
+        """Get the target temperature."""
+        _LOGGER.debug("Get the target temperature")
+        response = await self.execute_get_request()
+        alarms_info = response.get("nvm").get("alarms_log")
+        index = alarms_info.get("index")
+        alarms = []
+
+        for i in range(index):
+            alarms.append(alarms_info.get("alarms")[i])
+
+        return alarms
+
+    async def get_nb_alarms(self):
+        """Get the target temperature."""
+        _LOGGER.debug("Get the target temperature")
+        response = await self.execute_get_request()
+        return response.get("nvm").get("alarms_log").get("index")
 
     async def execute_get_request(self):
         """Call the API."""
