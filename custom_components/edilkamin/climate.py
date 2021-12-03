@@ -19,6 +19,9 @@ from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 
 _LOGGER = logging.getLogger(__name__)
 
+CLIMATE_HVAC_MODE_MANAGED = [
+    HVAC_MODE_HEAT
+]
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add sensors for passed config_entry in HA."""
@@ -45,6 +48,7 @@ class EdilkaminClimateEntity(ClimateEntity):
         self._current_temperature = None
         self._target_temperature = None
         self._fan1_speed = None
+        self._hvac_mode = None
         self.api = api
         self.mac_address = api.get_mac_address()
         self._attr_max_temp = 24
@@ -73,12 +77,12 @@ class EdilkaminClimateEntity(ClimateEntity):
     @property
     def hvac_mode(self):
         """The current operation ."""
-        return HVAC_MODE_OFF
+        return self._hvac_mode
 
     @property
     def hvac_modes(self):
         """List of available operation modes."""
-        return [HVAC_MODE_OFF]
+        return CLIMATE_HVAC_MODE_MANAGED
 
     @property
     def fan_mode(self):
@@ -108,6 +112,7 @@ class EdilkaminClimateEntity(ClimateEntity):
             _LOGGER.error(str(err))
             return
         self.async_write_ha_state()
+
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         if kwargs.get(ATTR_TEMPERATURE) is not None:
@@ -121,6 +126,41 @@ class EdilkaminClimateEntity(ClimateEntity):
             self._current_temperature = await self.api.get_temperature()
             self._target_temperature = await self.api.get_target_temperature()
             self._fan1_speed = await self.api.get_fan_1_speed()
+
+            power = await self.api.get_power_status()
+            if power is True:
+                self._hvac_mode = HVAC_MODE_HEAT
+            else:
+                self._hvac_mode = HVAC_MODE_OFF
+
         except HttpException as err:
             _LOGGER.error(str(err))
             return
+
+    async def async_set_hvac_mode(self, hvac_mode):
+        """Set new target hvac mode."""
+        _LOGGER.error(hvac_mode)
+
+        if hvac_mode not in CLIMATE_HVAC_MODE_MANAGED:
+            raise ValueError(f"Unsupported HVAC mode: {hvac_mode}")
+
+        if hvac_mode == HVAC_MODE_OFF:
+            return await self.async_turn_off()
+
+        if self._hvac_mode == HVAC_MODE_HEAT and hvac_mode == HVAC_MODE_HEAT:
+            return await self.async_turn_off()
+
+        await self.async_turn_on()
+        _LOGGER.debug("Setting operation mode to %s", hvac_mode)
+        self.async_write_ha_state()
+
+    async def async_turn_on(self):
+        """Turn on."""
+        _LOGGER.debug("Turning %s on", self.unique_id)
+        await self.api.enable_power()
+
+    async def async_turn_off(self):
+        """Turn off."""
+        _LOGGER.debug("Turning %s off", self.unique_id)
+        await self.api.disable_power()
+        self.async_write_ha_state()
