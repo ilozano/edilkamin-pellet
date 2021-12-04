@@ -14,7 +14,7 @@ from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 
 from typing import Any
 
-from .const import DOMAIN, MAC_ADDRESS, REGEX_MAC_ADDRESS
+from .const import DOMAIN, MAC_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
