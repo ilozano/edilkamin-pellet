@@ -2,19 +2,23 @@
 from __future__ import annotations
 
 import logging
+import re
 import voluptuous as vol
+from voluptuous.validators import Boolean
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
+
 from typing import Any
 
-from .const import DOMAIN, MAC_ADDRESS
+from .const import DOMAIN, MAC_ADDRESS, REGEX_MAC_ADDRESS
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema({vol.Required(MAC_ADDRESS): str})
-
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
@@ -28,15 +32,22 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     #     your_validate_func, data["username"], data["password"]
     # )
 
-    mac_ddress = data[MAC_ADDRESS]
+    mac_address = data[MAC_ADDRESS]
 
+    api = EdilkaminAsyncApi(mac_address=mac_address, session=async_get_clientsession(hass))
+
+    try:
+        await api.check()
+    except HttpException as err:
+        raise CannotConnect
     # If you cannot connect:
     # throw CannotConnect
     # If the authentication is wrong:
     # InvalidAuth
 
     # Return info that you want to store in the config entry.
-    return {"title": mac_ddress}
+
+    return {"title": mac_address.replace(':', '')}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -59,7 +70,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             info = await validate_input(self.hass, user_input)
         except CannotConnect:
             errors["base"] = "cannot_connect"
-        except InvalidAuth:
+        except InvalidMacAddress:
             errors["base"] = "invalid_auth"
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
@@ -76,5 +87,5 @@ class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
 
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+class InvalidMacAddress(HomeAssistantError):
+    """Error to indicate there is invalid mac address."""
