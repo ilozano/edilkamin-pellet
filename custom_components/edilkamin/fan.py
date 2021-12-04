@@ -47,10 +47,6 @@ class EdilkaminFan(FanEntity):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_fan1"
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Ventillation 1"
 
     @property
     def percentage(self) -> int | None:

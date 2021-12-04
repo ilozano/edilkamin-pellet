@@ -57,11 +57,6 @@ class EdilkaminTankBinarySensor(BinarySensorEntity):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_tank_binary_sensor"
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"Réservoir pellet"
-
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
@@ -94,11 +89,6 @@ class EdilkaminCheckBinarySensor(BinarySensorEntity):
     def unique_id(self):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_check_binary_sensor"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Check config"
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""

@@ -60,11 +60,6 @@ class EdilkaminClimateEntity(ClimateEntity):
         return f"{self.mac_address}_climate"
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Climate"
-
-    @property
     def temperature_unit(self):
         """The unit of temperature measurement"""
         return TEMP_CELSIUS

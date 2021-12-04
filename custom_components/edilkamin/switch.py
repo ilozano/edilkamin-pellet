@@ -10,6 +10,7 @@ from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add sensors for passed config_entry in HA."""
     mac_address = hass.data[DOMAIN][config_entry.entry_id]
@@ -18,9 +19,15 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
 
     async_add_devices(
         [
-            EdilkaminAirekareSwitch(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
-            EdilkaminPowerSwitch(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
-            EdilkaminRelaxSwitch(EdilkaminAsyncApi(mac_address=mac_address, session=session)),
+            EdilkaminAirekareSwitch(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
+            EdilkaminPowerSwitch(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
+            EdilkaminRelaxSwitch(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
         ]
     )
 
@@ -44,11 +51,6 @@ class EdilkaminAirekareSwitch(SwitchEntity):
     def unique_id(self):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_airekare_switch"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Mode AireKare"
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
@@ -86,11 +88,6 @@ class EdilkaminPowerSwitch(SwitchEntity):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_power_switch"
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Pellet"
-
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
         await self.api.enable_power()
@@ -127,11 +124,6 @@ class EdilkaminRelaxSwitch(SwitchEntity):
     def unique_id(self):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_relax_switch"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Mode relax"
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
