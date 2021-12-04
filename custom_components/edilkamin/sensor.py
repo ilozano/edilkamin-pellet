@@ -165,6 +165,7 @@ class EdilkaminAlarmSensor(SensorEntity):
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
+            self._state = await self.api.get_nb_alarms()
             alarms = await self.api.get_alarms()
 
             errors = {
