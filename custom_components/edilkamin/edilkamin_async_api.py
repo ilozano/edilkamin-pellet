@@ -117,6 +117,13 @@ class EdilkaminAsyncApi:
             response.get("nvm").get("user_parameters").get("enviroment_1_temperature")
         )
 
+    async def get_actual_power(self):
+        """Get the power status."""
+        _LOGGER.debug("Get power")
+        response = await self.execute_get_request()
+        result = response.get("status").get("state").get("actual_power")
+        return result
+
     async def get_alarms(self):
         """Get the target temperature."""
         _LOGGER.debug("Get the target temperature")

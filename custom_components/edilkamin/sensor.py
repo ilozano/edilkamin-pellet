@@ -19,7 +19,7 @@ from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(seconds=15)
+# SCAN_INTERVAL = timedelta(seconds=15)
 
 # https://github.com/home-assistant/example-custom-config/blob/master/custom_components/detailed_hello_world_push/sensor.py
 async def async_setup_entry(hass, config_entry, async_add_devices):
@@ -38,6 +38,9 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
                 EdilkaminAsyncApi(mac_address=mac_address, session=session)
             ),
             EdilkaminAlarmSensor(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            ),
+            EdilkaminActualPowerSensor(
                 EdilkaminAsyncApi(mac_address=mac_address, session=session)
             ),
         ]
@@ -67,11 +70,6 @@ class EdilkaminTemperatureSensor(SensorEntity):
     def unique_id(self):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_temperature"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Temperature"
 
     @property
     def state(self):
@@ -106,11 +104,6 @@ class EdilkaminFan1Sensor(SensorEntity):
     def unique_id(self):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_fan1_sensor"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Ventillation 1"
 
     @property
     def state(self):
@@ -148,11 +141,6 @@ class EdilkaminAlarmSensor(SensorEntity):
         return f"{self.mac_address}_nb_alarms_sensor"
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "Nb alarmes pellet"
-
-    @property
     def state(self):
         """Return the state of the sensor."""
         return self._state
@@ -183,6 +171,44 @@ class EdilkaminAlarmSensor(SensorEntity):
 
             self._attributes = errors
 
+        except HttpException as err:
+            _LOGGER.error(str(err))
+            return
+
+
+class EdilkaminActualPowerSensor(SensorEntity):
+    """Representation of a Sensor."""
+
+    def __init__(self, api: EdilkaminAsyncApi):
+        """Initialize the sensor."""
+        self._state = None
+        self.api = api
+        self.mac_address = api.get_mac_address()
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return DEVICE_CLASS_POWER
+
+    @property
+    def native_unit_of_measurement(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return None
+
+    @property
+    def unique_id(self):
+        """Return a unique_id for this entity."""
+        return f"{self.mac_address}_actual_power"
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    async def async_update(self) -> None:
+        """Fetch new state data for the sensor."""
+        try:
+            self._state = await self.api.get_actual_power()
         except HttpException as err:
             _LOGGER.error(str(err))
             return
