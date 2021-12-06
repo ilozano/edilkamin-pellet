@@ -19,6 +19,11 @@ This little integration provides :
 
 _Pay attention_ : this integration works because the API of Edilkamin is not secure. If the API changes, I cannot guarantee that the integration will continue to work.
 
+## Todo:
+
+- [x] validate mac address provided 
+- [ ] create test
+
 ## Installation
 
 ### Manual Installation
@@ -45,7 +50,7 @@ _Pay attention_ : this integration works because the API of Edilkamin is not sec
 
 ```yaml
 edilkamin:
-  - mac_address: XX:XX:XX:XX:XX:XX
+  - mac_address: XXXXXXXXXXXX
 ```
 
 ## Tested device :
@@ -53,3 +58,4 @@ edilkamin:
 - Myrna 
   - motherboard : 1.58.201215a
   - wifi_ble_module : 1.0_20
+
