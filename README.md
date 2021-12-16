@@ -10,6 +10,7 @@ This little integration provides :
   - get the temperature
   - get the speed of fan 1
   - get nb alarms an dates
+  - get the power of stove
 - switch :
   - turn on/off the power  
   - turn on/off the airkare function
