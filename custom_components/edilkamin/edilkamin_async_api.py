@@ -30,26 +30,10 @@ class EdilkaminAsyncApi:
         """Get the mac address."""
         return self.mac_address
 
-    async def get_temperature(self):
-        """Get the temperature."""
-        _LOGGER.debug("Get temperature")
-        response = await self.execute_get_request()
-        result = response.get("status").get("temperatures").get("enviroment")
-        _LOGGER.debug("Get temperature response  = %s", result)
-        return result
-
     async def set_temperature(self, value):
         """Modify the temperature."""
         _LOGGER.debug("Set temperature to = %s", value)
         await self.execute_put_request("enviroment_1_temperature", value)
-
-    async def get_power_status(self):
-        """Get the power status."""
-        _LOGGER.debug("Get power")
-        response = await self.execute_get_request()
-        result = response.get("status").get("commands").get("power")
-        _LOGGER.debug("Get power response  = %s", result)
-        return result
 
     async def enable_power(self):
         """Enable the pellet."""
@@ -61,12 +45,6 @@ class EdilkaminAsyncApi:
         _LOGGER.debug("Disable power")
         await self.execute_put_request("power", 0)
 
-    async def get_airkare_status(self):
-        """Get status of airekare."""
-        _LOGGER.debug("Get airkare status")
-        response = await self.execute_get_request()
-        return response.get("status").get("flags").get("is_airkare_active")
-
     async def enable_airkare(self):
         """Enable airkare."""
         _LOGGER.debug("Enable airkare")
@@ -76,12 +54,6 @@ class EdilkaminAsyncApi:
         """Disable airkare."""
         _LOGGER.debug("Disable airkare")
         await self.execute_put_request("airkare_function", 0)
-
-    async def get_relax_status(self):
-        """Get the status of relax mode."""
-        _LOGGER.debug("Get relax status")
-        response = await self.execute_get_request()
-        return response.get("status").get("flags").get("is_relax_active")
 
     async def enable_relax(self):
         """Enable relax."""
@@ -93,18 +65,6 @@ class EdilkaminAsyncApi:
         _LOGGER.debug("Disable relax")
         await self.execute_put_request("relax_mode", False)
 
-    async def get_status_tank(self):
-        """Get the status of the tank."""
-        _LOGGER.debug("Get tank status")
-        response = await self.execute_get_request()
-        return response.get("status").get("flags").get("is_pellet_in_reserve")
-
-    async def get_fan_1_speed(self):
-        """Get the speed of fan 1."""
-        _LOGGER.debug("Get speed for fan 1")
-        response = await self.execute_get_request()
-        return response.get("status").get("fans").get("fan_1_speed")
-
     async def set_fan_1_speed(self, value):
         """Set the speed of fan 1."""
         _LOGGER.debug("Set speed for fan 1 to %s", value)
@@ -115,41 +75,7 @@ class EdilkaminAsyncApi:
         _LOGGER.debug("Check config")
         await self.execute_put_request("check", False)
 
-    async def get_target_temperature(self):
-        """Get the target temperature."""
-        _LOGGER.debug("Get the target temperature")
-        response = await self.execute_get_request()
-        return (
-            response.get("nvm").get("user_parameters").get("enviroment_1_temperature")
-        )
-
-    async def get_actual_power(self):
-        """Get the power status."""
-        _LOGGER.debug("Get power")
-        response = await self.execute_get_request()
-        result = response.get("status").get("state").get("actual_power")
-        return result
-
-    async def get_alarms(self):
-        """Get the target temperature."""
-        _LOGGER.debug("Get the target temperature")
-        response = await self.execute_get_request()
-        alarms_info = response.get("nvm").get("alarms_log")
-        index = alarms_info.get("index")
-        alarms = []
-
-        for i in range(index):
-            alarms.append(alarms_info.get("alarms")[i])
-
-        return alarms
-
-    async def get_nb_alarms(self):
-        """Get the target temperature."""
-        _LOGGER.debug("Get the target temperature")
-        response = await self.execute_get_request()
-        return response.get("nvm").get("alarms_log").get("index")
-
-    async def execute_get_request(self):
+    async def fetch_data(self):
         return await self.execute_request("GET", self.url_info, None)
 
     async def execute_put_request(self, attributes, value):
@@ -166,7 +92,12 @@ class EdilkaminAsyncApi:
             self.session = aiohttp.ClientSession()
         try:
             async with async_timeout.timeout(5):
-                _LOGGER.debug("Endpoint URL: %s , method: %s, body: %s", str(url), str(method), str(body))
+                _LOGGER.debug(
+                    "Endpoint URL: %s , method: %s, body: %s",
+                    str(url),
+                    str(method),
+                    str(body),
+                )
                 headers = await self.get_headers()
                 response = await self.session.request(
                     method, url, headers=headers, data=body
@@ -199,11 +130,11 @@ class EdilkaminAsyncApi:
         except aiohttp.ClientError as error:
             _LOGGER.error("Error connecting to Edilkamin API: %s", error)
             message = "Timeout connecting to Edilkamin API, body = {body}."
-            raise HttpException(message, "Time out", 500)
+            raise HttpException(message, "Time out", 500) from error
         except asyncio.TimeoutError as error:
             _LOGGER.debug("Timeout connecting to Edilkamin API: %s", error)
             message = "Timeout connecting to Edilkamin API, body = {body}."
-            raise HttpException(message, "Time out", 408)
+            raise HttpException(message, "Time out", 408) from error
         return data
 
     async def get_headers(self):

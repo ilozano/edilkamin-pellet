@@ -3,58 +3,56 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import timedelta
 from typing import Any
 
+from config.custom_components.edilkamin.edilkamin_wrapper import EdilkaminWrapper
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import (
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_TEMPERATURE,
     TEMP_CELSIUS,
 )
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import Coordinator
 from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 
 _LOGGER = logging.getLogger(__name__)
 
-# SCAN_INTERVAL = timedelta(seconds=15)
 
 # https://github.com/home-assistant/example-custom-config/blob/master/custom_components/detailed_hello_world_push/sensor.py
-async def async_setup_entry(hass, config_entry, async_add_devices):
+async def async_setup_entry(hass, config_entry, async_add_entities):
     """Add sensors for passed config_entry in HA."""
 
     mac_address = hass.data[DOMAIN][config_entry.entry_id]
 
     session = async_get_clientsession(hass)
 
-    async_add_devices(
+    edilkamin_api = EdilkaminAsyncApi(mac_address=mac_address, session=session)
+
+    coordinator = Coordinator(hass, "sensor", edilkamin_api)
+
+    async_add_entities(
         [
-            EdilkaminTemperatureSensor(
-                EdilkaminAsyncApi(mac_address=mac_address, session=session)
-            ),
-            EdilkaminFan1Sensor(
-                EdilkaminAsyncApi(mac_address=mac_address, session=session)
-            ),
-            EdilkaminAlarmSensor(
-                EdilkaminAsyncApi(mac_address=mac_address, session=session)
-            ),
-            EdilkaminActualPowerSensor(
-                EdilkaminAsyncApi(mac_address=mac_address, session=session)
-            ),
+            EdilkaminTemperatureSensor(coordinator, mac_address),
+            EdilkaminFan1Sensor(coordinator, mac_address),
+            EdilkaminAlarmSensor(coordinator, mac_address),
+            EdilkaminActualPowerSensor(coordinator, mac_address),
         ]
     )
 
 
-class EdilkaminTemperatureSensor(SensorEntity):
+class EdilkaminTemperatureSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, api: EdilkaminAsyncApi):
+    def __init__(self, coordinator: CoordinatorEntity, mac_address: str):
         """Initialize the sensor."""
         self._state = None
-        self.api = api
-        self.mac_address = api.get_mac_address()
+        self.coordinator = coordinator
+        self.mac_address = mac_address
 
     @property
     def device_class(self):
@@ -76,23 +74,29 @@ class EdilkaminTemperatureSensor(SensorEntity):
         """Return the state of the sensor."""
         return self._state
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._state = EdilkaminWrapper.get_temperature(self.coordinator.data)
+        self.async_write_ha_state()
+
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
-            self._state = await self.api.get_temperature()
+            await self.async_write_ha_state()
         except HttpException as err:
             _LOGGER.error(str(err))
             return
 
 
-class EdilkaminFan1Sensor(SensorEntity):
+class EdilkaminFan1Sensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, api: EdilkaminAsyncApi):
+    def __init__(self, coordinator: CoordinatorEntity, mac_address: str):
         """Initialize the sensor."""
         self._state = None
-        self.api = api
-        self.mac_address = api.get_mac_address()
+        self.coordinator = coordinator
+        self.mac_address = mac_address
         self._attr_icon = "mdi:fan"
 
     @property
@@ -110,23 +114,29 @@ class EdilkaminFan1Sensor(SensorEntity):
         """Return the state of the sensor."""
         return self._state
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._state = EdilkaminWrapper.get_fan_1_speed(self.coordinator.data)
+        self.async_write_ha_state()
+
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
-            self._state = await self.api.get_fan_1_speed()
+            await self.async_write_ha_state()
         except HttpException as err:
             _LOGGER.error(str(err))
             return
 
 
-class EdilkaminAlarmSensor(SensorEntity):
+class EdilkaminAlarmSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, api: EdilkaminAsyncApi):
+    def __init__(self, coordinator: CoordinatorEntity, mac_address: str):
         """Initialize the sensor."""
         self._state = None
-        self.api = api
-        self.mac_address = api.get_mac_address()
+        self.coordinator = coordinator
+        self.mac_address = mac_address
         self._attr_icon = "mdi:alert"
         self._attributes: dict[str, Any] = {}
 
@@ -150,40 +160,45 @@ class EdilkaminAlarmSensor(SensorEntity):
         """Return attributes for the sensor."""
         return self._attributes
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._state = EdilkaminWrapper.get_nb_alarms(self.coordinator.data)
+        alarms = EdilkaminWrapper.get_alarms(self.coordinator.data)
+
+        errors = {
+            "errors": [],
+        }
+
+        for alarm in alarms:
+            data = {
+                "type": alarm["type"],
+                "timestamp": time.strftime(
+                    "%d-%m-%Y %H:%M:%S", time.localtime(alarm["timestamp"])
+                ),
+            }
+            errors["errors"].append(data)
+
+        self._attributes = errors
+        self.async_write_ha_state()
+
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
-            self._state = await self.api.get_nb_alarms()
-            alarms = await self.api.get_alarms()
-
-            errors = {
-                "errors": [],
-            }
-
-            for alarm in alarms:
-                data = {
-                    "type": alarm["type"],
-                    "timestamp": time.strftime(
-                        "%d-%m-%Y %H:%M:%S", time.localtime(alarm["timestamp"])
-                    ),
-                }
-                errors["errors"].append(data)
-
-            self._attributes = errors
-
+            await self.async_write_ha_state()
         except HttpException as err:
             _LOGGER.error(str(err))
             return
 
 
-class EdilkaminActualPowerSensor(SensorEntity):
+class EdilkaminActualPowerSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, api: EdilkaminAsyncApi):
+    def __init__(self, coordinator: CoordinatorEntity, mac_address: str):
         """Initialize the sensor."""
         self._state = None
-        self.api = api
-        self.mac_address = api.get_mac_address()
+        self.coordinator = coordinator
+        self.mac_address = mac_address
 
     @property
     def device_class(self):
@@ -205,10 +220,16 @@ class EdilkaminActualPowerSensor(SensorEntity):
         """Return the state of the sensor."""
         return self._state
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._state = EdilkaminWrapper.get_actual_power(self.coordinator.data)
+        self.async_write_ha_state()
+
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
-            self._state = await self.api.get_actual_power()
+            await self.async_write_ha_state()
         except HttpException as err:
             _LOGGER.error(str(err))
             return
