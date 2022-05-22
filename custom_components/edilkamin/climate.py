@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import logging
-
-from config.custom_components.edilkamin.edilkamin_wrapper import EdilkaminWrapper
+import logging
+from datetime import timedelta
 from homeassistant.components.climate import (
     ClimateEntity,
     HVAC_MODE_HEAT,
@@ -12,12 +12,9 @@ from homeassistant.components.climate import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 from homeassistant.const import TEMP_CELSIUS, ATTR_TEMPERATURE
-from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import Coordinator
 from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,28 +23,26 @@ CLIMATE_HVAC_MODE_MANAGED = [
     HVAC_MODE_HEAT
 ]
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, config_entry, async_add_devices):
     """Add sensors for passed config_entry in HA."""
 
     mac_address = hass.data[DOMAIN][config_entry.entry_id]
 
     session = async_get_clientsession(hass)
 
-    edilkamin_api = EdilkaminAsyncApi(mac_address=mac_address, session=session)
-
-    coordinator = Coordinator(hass, "binary_sensor", edilkamin_api)
-
-    async_add_entities(
+    async_add_devices(
         [
-            EdilkaminClimateEntity(coordinator, edilkamin_api)
+            EdilkaminClimateEntity(
+                EdilkaminAsyncApi(mac_address=mac_address, session=session)
+            )
         ]
     )
 
 
-class EdilkaminClimateEntity(CoordinatorEntity, ClimateEntity):
+class EdilkaminClimateEntity(ClimateEntity):
     """Representation of a Climate."""
 
-    def __init__(self, coordinator: CoordinatorEntity, api: EdilkaminAsyncApi):
+    def __init__(self, api: EdilkaminAsyncApi):
         """Initialize the climate."""
         self._state = None
         self._current_temperature = None
@@ -58,7 +53,6 @@ class EdilkaminClimateEntity(CoordinatorEntity, ClimateEntity):
         self.mac_address = api.get_mac_address()
         self._attr_max_temp = 24
         self._attr_min_temp = 14
-        self.coordinator = coordinator
 
     @property
     def unique_id(self):
@@ -121,6 +115,23 @@ class EdilkaminClimateEntity(CoordinatorEntity, ClimateEntity):
             await self.api.set_temperature(target_tmp)
         self.async_write_ha_state()
 
+    async def async_update(self) -> None:
+        """Fetch new state data for the sensor."""
+        try:
+            self._current_temperature = await self.api.get_temperature()
+            self._target_temperature = await self.api.get_target_temperature()
+            self._fan1_speed = await self.api.get_fan_1_speed()
+
+            power = await self.api.get_power_status()
+            if power is True:
+                self._hvac_mode = HVAC_MODE_HEAT
+            else:
+                self._hvac_mode = HVAC_MODE_OFF
+
+        except HttpException as err:
+            _LOGGER.error(str(err))
+            return
+
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
         _LOGGER.error(hvac_mode)
@@ -148,27 +159,3 @@ class EdilkaminClimateEntity(CoordinatorEntity, ClimateEntity):
         _LOGGER.debug("Turning %s off", self.unique_id)
         await self.api.disable_power()
         self.async_write_ha_state()
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._current_temperature = EdilkaminWrapper.get_temperature(self.coordinator.data)
-        self._target_temperature = EdilkaminWrapper.get_target_temperature(self.coordinator.data)
-        self._fan1_speed = EdilkaminWrapper.get_fan_1_speed(self.coordinator.data)
-
-        power = EdilkaminWrapper.get_power_status(self.coordinator.data)
-        if power is True:
-            self._hvac_mode = HVAC_MODE_HEAT
-        else:
-            self._hvac_mode = HVAC_MODE_OFF
-
-        self.async_write_ha_state()
-
-    async def async_update(self) -> None:
-        """Fetch new state data for the sensor."""
-        try:
-            await self.async_write_ha_state()
-
-        except HttpException as err:
-            _LOGGER.error(str(err))
-            return

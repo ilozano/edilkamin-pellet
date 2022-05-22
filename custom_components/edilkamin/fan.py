@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import math
-from config.custom_components.edilkamin.edilkamin_wrapper import EdilkaminWrapper
 
 from homeassistant.components.fan import SUPPORT_SET_SPEED, FanEntity
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -14,13 +13,8 @@ from homeassistant.util.percentage import (
     ranged_value_to_percentage,
 )
 
-from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
 from .const import DOMAIN
 from .edilkamin_async_api import EdilkaminAsyncApi, HttpException
-from .coordinator import Coordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,21 +28,16 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
 
     session = async_get_clientsession(hass)
 
-    edilkamin_api = EdilkaminAsyncApi(mac_address=mac_address, session=session)
-
-    coordinator = Coordinator(hass, "fan", edilkamin_api)
-
-    async_add_devices([EdilkaminFan(coordinator, edilkamin_api)])
+    async_add_devices([EdilkaminFan(EdilkaminAsyncApi(mac_address=mac_address, session=session))])
 
 
-class EdilkaminFan(CoordinatorEntity, FanEntity):
+class EdilkaminFan(FanEntity):
     """Representation of a Fan."""
 
-    def __init__(self, coordinator: CoordinatorEntity, api: EdilkaminAsyncApi):
+    def __init__(self, api: EdilkaminAsyncApi):
         """Initialize the fan."""
         self.api = api
         self.mac_address = api.get_mac_address()
-        self.coordinator = coordinator
 
         self.current_speed = None
         self.current_state = False
@@ -57,6 +46,7 @@ class EdilkaminFan(CoordinatorEntity, FanEntity):
     def unique_id(self):
         """Return a unique_id for this entity."""
         return f"{self.mac_address}_fan1"
+
 
     @property
     def percentage(self) -> int | None:
@@ -84,21 +74,15 @@ class EdilkaminFan(CoordinatorEntity, FanEntity):
             percentage_to_ranged_value(SPEED_RANGE, percentage)
         )
 
-        await self.api.set_fan_1_speed(self.current_speed)
+        self.api.set_fan_1_speed(self.current_speed)
         self.schedule_update_ha_state()
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.current_state = EdilkaminWrapper.get_power_status(self.coordinator.data)
-        if self.current_state is True:
-            self.current_speed = EdilkaminWrapper.get_fan_1_speed(self.coordinator.data)
-        self.async_write_ha_state()
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         try:
-            await self.async_write_ha_state()
+            self.current_state = await self.api.get_power_status()
+            if self.current_state is True:
+                self.current_speed = await self.api.get_fan_1_speed()
         except HttpException as err:
             _LOGGER.error(str(err))
             return
